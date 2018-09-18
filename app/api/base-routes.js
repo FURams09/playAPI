@@ -1,41 +1,56 @@
 import { ObjectID } from 'mongodb';
+import {Router} from 'express';
+import base_api from '../db/base-routes';
 
-const BaseRoutes = (app, mongoDB) => {
+
+
+const BaseRoutes = (store) => {
+    let router = Router();
     //https://medium.freecodecamp.org/building-a-simple-node-js-api-in-under-30-minutes-a07ea9e390d2
-    const BASE_DIRECTORY = '/base';
-    var db = mongoDB.db("Base_API");
-    app.get(BASE_DIRECTORY, (req, res) => {
-        res.send('<h3>Hooked Up</h3>');
+
+
+    router.get('/', (req, res) => {
+        res.send(base_api.baseMsg);
     });
 
-    app.post(BASE_DIRECTORY + '/notes', (req, res) => {
+    router.post('/notes', (req, res) => {
         console.log(req.body);
-        const note = { text: req.body.body, titel: req.body.title};
-        db.collection('blog-posts').insert(note, (err, response) => {
-            if (err) {
-                res.send({ 'error': err});
-            } else {
-                res.send({ 'success': response.ops[0]})
-            }
-        });
-    });
-
-    app.get(BASE_DIRECTORY + '/notes/:id', (req, res) => {
-        const details = { '_id': new ObjectID(req.params.id)}
-
-        db.collection('blog-posts').findOne(details, (err, post) => {
-            if (err) {
-                res.send({ 'error': err});
-            } else {
-                res.send(post);
-            }
+        const note = { text: req.body.body, title: req.body.title};
+        base_api.addNote(note, store)
+        .then(note => {
+            res.send(note);
+        })
+        .catch(err => {
+            res.send(err);
         })
     });
 
-    app.delete(BASE_DIRECTORY + '/notes/:id', (req, res) => {
+    router.get('/notes/', (req, res) => {
+        base_api.getNotes(store, req.query.db)
+        .then((notes) => {
+            res.send(notes);
+        })
+        .catch((err) => {
+            res.send ({'err': err});
+        });
+    });
+
+    router.get('/notes/:id', (req, res) => {
+        
+        base_api.getNote(req.params.id, store, req.query.db)
+        .then((note) => {
+            res.send(note);
+        })
+        .catch((err) => {
+            res.send ({'err': err});
+        });
+    });
+
+    router.delete('/notes/:id', (req, res) => {
         const id = req.params.id;
         const details = { '_id': new ObjectID(id) };
-        db.collection('blog-posts').remove(details, (err, item) => {
+        
+        store.db.collection('blog-posts').remove(details, (err, item) => {
           if (err) {
             res.send({'error': err});
           } else {
@@ -44,11 +59,11 @@ const BaseRoutes = (app, mongoDB) => {
         });
       });
 
-      app.put(BASE_DIRECTORY + '/notes/:id', (req, res) => {
+    router.put('/notes/:id', (req, res) => {
         const id = req.params.id;
         const details = { '_id': new ObjectID(id) };
         const note = { text: req.body.body, title: req.body.title };
-        db.collection('blog-posts').update(details, note, (err, result) => {
+        store.db.collection('blog-posts').update(details, note, (err, result) => {
           if (err) {
               res.send({'error': err});
           } else {
@@ -57,6 +72,7 @@ const BaseRoutes = (app, mongoDB) => {
         });
       });
 
+    return router;
 };
 
 export default BaseRoutes;

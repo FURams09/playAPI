@@ -1,12 +1,13 @@
 import express from 'express';
 import { MongoClient } from 'mongodb';
 import cors from 'cors';
-import Routes from './api/index';
-import db from './db/config';
-
+import Routes from './api';
+import graphqlHTTP from 'express-graphql';
+import schema from './graphql/Schema';
+import {Connect} from './db/db';
 
 //INIT SERVER
-const PORT = 8888
+const PORT = 8000
 const app = express();
 
 //MIDDLEWARE
@@ -15,15 +16,36 @@ app.use(express.json({type: 'application/json'}));
 
 app.use(cors({origin: 'http://localhost:8080'})) //8080 is the default react dev port
 
-MongoClient.connect(db.url, (err, database) => {
-    if (err) return console.log(err);
+Connect()
+.then((store) => {
     //REGISTER ROUTES
-    Routes(app, database);
 
+    app.use('/base', Routes.BaseRoutes( {
+        db: store.mongoDB.db("Base_API"),
+        redis: store.redis
+    }));
+    app.use('/redux', Routes.ReduxCourse({
+        db: store.mongoDB.db("Redux_Course"),
+        redis: store.redis
+    }));
 
+    //HOOKS IN GRAPHQL
+    app.use('/graphql/react_redux', graphqlHTTP (req => {
+        return({
+        schema,
+        context: {
+            db: store.mongoDB.db("Redux_Course"),
+            redis: store.redis
+        },
+        graphiql:true
+    })
+    }))
     //START SERVER
     app.listen(PORT, (err, unknown) => {
         console.log(`Listening for Dev request at http://localhost:${PORT}/`)
     })
+})
+.catch(err => {
+    console.log(err);
 })
 

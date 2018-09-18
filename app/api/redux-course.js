@@ -1,99 +1,57 @@
 import { ObjectID } from 'mongodb';
-import BodyParser from 'body-parser';
-import dbCalls from '../db/db';
+import Redux from '../db/redux-course';
+import {Router} from 'express';
+const ReduxBlog =  function (store) {
+    let router = Router();
 
-const ReduxBlog =  function (app, mongoDB) {
-    const BASE_URL= "/Redux";
-    var db = mongoDB.db("Redux_Course");
-
-
-    app.get(BASE_URL, (req, res) => {
-        res.send(dbCalls.redux.base);
+    router.get('/', (req, res) => {
+        res.send(Redux.base);
     })
 
-    app.get(BASE_URL + '/posts', async (req, res) => {
-        try {
-            let resutls = await dbCalls.redux.getPosts(db);
-            console.log(results);
-            res.send(`results: ${results}`);
-            // if (err) {
-            //         res.send(err);
-            //     } else {
-            //         res.send({'success': results});
-            //     }
-            
-        }
-        catch (ex) {
-            res.send({'server err': ex});
-        }
-        // db.collection('blog-posts').find()
-        // .limit(40)
-        // .toArray((err, results) => {
-        //     if (err) {
-        //         res.send({'error': err});
-        //     } else {
-        //         res.send(results)
-        //     }
-        // })
+    router.get('/posts', async (req, res) => {
+        Redux.getPosts(store)
+        .then( results => {
+            res.send(results);
+        })
+        .catch(err => {
+            res.send({'err': err});
+        });
+
+
     })
 
-    app.post(BASE_URL + '/posts', (req, res) => {
-        const post = { title: req.body.title, category: req.body.category, content: req.body.content};
-        const results = dbCalls.redux.addPost(post, db);
-        if (results.err) {
-            res.send(results);
-        } else {
-            res.send({'success': results.res});
-        }
-        // db.collection('blog-posts').insert(post, (err, newPost) => {
-        //     if (err) {
-        //         res.send({ 'error': err});
-        //     } else {
-        //         res.send({ 'success': newPost.ops[0]})
-        //     }
-        // });
-    });
+    router.get('/posts/:id', (req, res) => {
 
-    app.get(BASE_URL + '/posts/:id', (req, res) => {
-        const results = dbCalls.redux.getPost(req.params.id, db);
-        if (results.err) {
-            res.send(results);
-        } else {
-            res.send(results.res)
-        }
-        
-        // const details = { '_id': new ObjectID(req.params.id)}
-
-        // db.collection('blog-posts').findOne(details, (err, post) => {
-        //     if (err) {
-        //         res.send({ 'error': err});
-        //     } else {
-        //         res.send(post);
-        //     }
-        // })
-    });
-
-    app.delete(BASE_URL + '/posts/:id', (req, res) => {
-        const id = req.params.id;
-        const details = { '_id': new ObjectID(id) };
-        db.collection('blog-posts').remove(details, (err, item) => {
-        if (err) {
-            res.send({'error': err});
-        } else {
-            res.send(item);
-        } 
+        Redux.getPost(req.params.id, store)
+        .then(post => {
+            res.send(post[0]);
+        })
+        .catch(err => {
+            res.send({'err': err})
         });
     });
 
-    app.post(BASE_URL + '/posts/massAdd', BodyParser.json({type: 'application/json'}),  (req, res) => {
-        db.collection('blog-posts').insert(req.body, (err, results) => {
-            if (err) {
-                res.send({ 'error': err});
-            } else {
-                res.send({'success': results})
-            }
+    router.post('/posts', (req, res) => {
+        const post = { title: req.body.title, category: req.body.category, content: req.body.content};
+        Redux.addPost(post, store)
+        .then(results => {
+            res.send(results[0]);
         })
-    })
+        .catch(err=> {
+            res.send({'err': err});
+        });
+    });
+
+    router.delete('/posts/:id', (req, res) => {
+        Redux.deletePost(req.params.id, store)
+        .then(item => {
+            res.send(item);
+        })
+        .catch(err => {
+            res.send({'err': err});
+        });
+    });
+    return router;
 }
 
 export default ReduxBlog;

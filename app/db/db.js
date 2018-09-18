@@ -1,41 +1,31 @@
+import { MongoClient } from 'mongodb';
 import {ObjectID} from 'mongodb';
+import {createClient as redisClient} from 'redis';
 
 
-export default {
-    redux: {
-        base: "Redux_Course",
-        getPost:  (id, db) => {
-            const idObj = { '_id': new ObjectID(id)};
-            db.collection('blog-posts').findOne(idObj, (err, results) => {
-                if (err) {
-                    return {'err': err};
-                } else {
-                   return {'res': results};
-                }
-            })
-        },
-        getPosts: async (db) => {
-            return db.collection('blog-posts').find()
-                .limit(40)
-                .toArray((err, results) => {
-                    if (err) {
-                        return {'err': err};
-                    } else {
-                        return {'res': results};
-                    }
-                });
-            
-                return results;
-            
-        },
-        addPost: (post, db) => {
-            db.insert(post, (err, newPost) => {
-                if (err) {
-                    return {'err': err};
-                } else {
-                    return  {'res': newPost.ops[0]};
-                }
+import redux from '../db/redux-course';
+import base_routes from '../db/base-routes';
+
+import config from './config';
+
+const POST_KEY_PREFIX = 'post:';
+const POST_LIST = 'post_list'
+
+export const Connect = () => {
+    return  new Promise((resolve, reject) => {
+                MongoClient.connect(config.url)
+                .then(res => {
+                    var mongoDB = res;
+                    var redis = redisClient(6379, '192.168.99.100');
+                    resolve({
+                        mongoDB,
+                        redis})
+                })
+                .catch(err => {reject(err)});
             });
-        }
-    }
+}
+
+export default  {
+    redux,
+    base_routes
 }

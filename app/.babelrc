@@ -1,0 +1,9 @@
+{
+    "presets": [
+      ["minify",{
+        "keepFnName": false
+    }],
+      "@babel/env"
+     
+    ]
+  }
